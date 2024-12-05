@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Lottery } from "../target/types/lottery";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 describe("lottery", () => {
   const provider = anchor.AnchorProvider.env();
@@ -38,5 +39,27 @@ describe("lottery", () => {
       { skipPreflight: true }
     );
     console.log("Your transaction signature", signature);
+
+    const initLotteryIx = await program.methods.initializeLottery().accounts({
+      tokenProgram: TOKEN_PROGRAM_ID,
+    });
+
+    const initLotteryTx = new anchor.web3.Transaction({
+      blockhash: blockchashWithContext.blockhash,
+      lastValidBlockHeight: blockchashWithContext.lastValidBlockHeight,
+      feePayer: provider.wallet.publicKey,
+    }).add(initLotteryIx);
+    initLotteryTx.sign(wallet.payer);
+    const serializedTx2 = initLotteryTx.serialize();
+    const initLotterySignature = await anchor.web3.sendAndConfirmRawTransaction(
+      connection,
+      serializedTx2,
+      // [wallet.payer],
+      { skipPreflight: true }
+    );
+    console.log(
+      "Your init lottery transaction signature",
+      initLotterySignature
+    );
   });
 });
