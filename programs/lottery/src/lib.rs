@@ -31,7 +31,7 @@ pub const NAME: &str = "Token Lottery Ticket #";
 #[constant]
  pub const SYMBOL: &str = "TLT"; 
 #[constant]
- pub const URI: &str = "https://media.istockphoto.com/id/1500283713/vector/cinema-ticket-on-white-background-movie-ticket-on-white-background.jpg?s=612x612&w=0&k=20&c=4J15lHFXyjEs6xBoagcZqq5GYHKk5sMwCJRP8pNM3Zg="; 
+ pub const URI: &str = "https://ipfs.io/ipfs/QmTzEiqhMAiat6WDL7NgsxGiUCzJrtVxb3Ffd3kSS8dufT"; 
 
 #[program]
 pub mod lottery {
@@ -104,7 +104,15 @@ pub mod lottery {
               &signer_seeds)
         ,Some(0))?;
 
+             msg!("Verifying Collection");
 
+             sign_metadata(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_metadata_program.to_account_info(),
+                     SignMetadata { creator: ctx.accounts.collection_mint.to_account_info(), metadata: ctx.accounts.metadata.to_account_info() },
+                      signer_seeds
+                    )
+             )?;
 
         Ok(()) 
     }
