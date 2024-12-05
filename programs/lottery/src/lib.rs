@@ -25,6 +25,14 @@ use anchor_spl::metadata::{
 
 declare_id!("9L5CvYnrL9VYqfKygm6sYbhzft2bBV52Gp78VLFU7XXu");
 
+#[constant]
+
+pub const NAME: &str = "Token Lottery Ticket #"; 
+#[constant]
+ pub const SYMBOL: &str = "TLT"; 
+#[constant]
+ pub const URI: &str = "https://media.istockphoto.com/id/1500283713/vector/cinema-ticket-on-white-background-movie-ticket-on-white-background.jpg?s=612x612&w=0&k=20&c=4J15lHFXyjEs6xBoagcZqq5GYHKk5sMwCJRP8pNM3Zg="; 
+
 #[program]
 pub mod lottery {
     use super::*;
@@ -43,6 +51,61 @@ pub mod lottery {
     }
 
     pub fn initialize_lottery(ctx: Context<InitializeLottery>) -> Result<()> {
+        let signer_seeds : &[&[&[u8]]] = &[&[
+            b"collection_mint".as_ref(),
+            &[ctx.bumps.collection_mint]
+        ]];
+        msg!("Creating Mint Account");
+        mint_to(CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), MintTo{
+            mint:ctx.accounts.collection_mint.to_account_info(),
+            to:ctx.accounts.collection_token_account.to_account_info(),
+            authority:ctx.accounts.collection_mint.to_account_info()
+        }, signer_seeds), 1)?;
+        msg!("Creating Metadata Account");
+
+        create_metadata_accounts_v3(CpiContext::new_with_signer(ctx.accounts.token_metadata_program.to_account_info(), CreateMetadataAccountsV3{ 
+            metadata: ctx.accounts.token_metadata_program.to_account_info(),
+            mint: ctx.accounts.collection_mint.to_account_info(),
+            mint_authority: ctx.accounts.collection_mint.to_account_info(),
+            payer: ctx.accounts.payer.to_account_info(),
+            update_authority: ctx.accounts.collection_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            rent: ctx.accounts.rent.to_account_info(),
+
+        }, &signer_seeds), DataV2{name:NAME.to_string(),
+        symbol:SYMBOL.to_string(),
+        uri:URI.to_string(),
+        seller_fee_basis_points: 0,
+        creators: Some(vec![Creator{
+            address:ctx.accounts.collection_mint.key(),
+            verified:false, share: 100
+        }]),
+        collection: None,
+        uses: None,
+
+    }, true, true, Some(CollectionDetails::V1{size:0}))?;
+
+    msg!("Creating Master edition account");
+
+    create_master_edition_v3(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_metadata_program.to_account_info(),
+             CreateMasterEditionV3{
+                payer: ctx.accounts.payer.to_account_info(),
+                mint: ctx.accounts.collection_mint.to_account_info(),
+                edition: ctx.accounts.master_edition.to_account_info(),
+                mint_authority: ctx.accounts.collection_mint.to_account_info(),
+                update_authority: ctx.accounts.collection_mint.to_account_info(),
+                metadata: ctx.accounts.metadata.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                rent: ctx.accounts.rent.to_account_info(),
+             },
+              &signer_seeds)
+        ,Some(0))?;
+
+
+
         Ok(()) 
     }
 }
@@ -106,6 +169,7 @@ pub struct InitializeLottery<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 
